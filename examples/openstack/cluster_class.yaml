@@ -1,0 +1,513 @@
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: ClusterClass
+metadata:
+  name: cc-lab
+  namespace: cc-test
+spec:
+  controlPlane:
+    ref:
+      apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+      kind: KubeadmControlPlaneTemplate
+      name: cc-lab-kubeadm-control-plane
+      namespace: cc-test
+    machineInfrastructure:
+      ref:
+        kind: OpenStackMachineTemplate
+        apiVersion: infrastructure.cluster.x-k8s.io/v1alpha5
+        name: cc-lab-control-plane
+        namespace: cc-test
+    machineHealthCheck:
+      maxUnhealthy: 33%
+      nodeStartupTimeout: 20m
+      unhealthyConditions:
+        - type: Ready
+          status: Unknown
+          timeout: 600s
+        - type: Ready
+          status: "False"
+          timeout: 600s
+  infrastructure:
+    ref:
+      apiVersion: infrastructure.cluster.x-k8s.io/v1alpha5
+      kind: OpenStackClusterTemplate
+      name: cc-lab-cluster
+      namespace: cc-test
+  workers:
+    machineDeployments:
+      - class: boot-from-volume
+        template:
+          bootstrap:
+            ref:
+              apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+              kind: KubeadmConfigTemplate
+              name: cc-lab-boot-from-volume
+              namespace: cc-test
+          infrastructure:
+            ref:
+              apiVersion: infrastructure.cluster.x-k8s.io/v1alpha5
+              kind: OpenStackMachineTemplate
+              name: cc-lab-boot-from-volume
+              namespace: cc-test
+        machineHealthCheck:
+          unhealthyRange: "[0-2]"
+          nodeStartupTimeout: 20m
+          unhealthyConditions:
+            - type: Ready
+              status: Unknown
+              timeout: 600s
+            - type: Ready
+              status: "False"
+              timeout: 600s
+      - class: boot-from-image
+        template:
+          bootstrap:
+            ref:
+              apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+              kind: KubeadmConfigTemplate
+              name: cc-lab-boot-from-image
+              namespace: cc-test
+          infrastructure:
+            ref:
+              apiVersion: infrastructure.cluster.x-k8s.io/v1alpha5
+              kind: OpenStackMachineTemplate
+              name: cc-lab-boot-from-image
+              namespace: cc-test
+        machineHealthCheck:
+          unhealthyRange: "[0-2]"
+          nodeStartupTimeout: 20m
+          unhealthyConditions:
+            - type: Ready
+              status: Unknown
+              timeout: 600s
+            - type: Ready
+              status: "False"
+              timeout: 600s
+  variables:
+    - name: cluster
+      required: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            cloud:
+              type: string
+            sshKeyName:
+              type: string
+            externalNetworkId:
+              type: string
+            bastionEnabled:
+              type: boolean
+            bastionFlavor:
+              type: string
+            bastionImage:
+              type: string
+    - name: controlPlane
+      required: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            flavorName:
+              type: string
+            volumeType:
+              type: string
+    - name: bootFromVolume
+      required: false
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                flavorName:
+                  type: string
+                volumeType:
+                  type: string
+                volumeSize:
+                  type: integer
+    - name: bootFromImage
+      required: false
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                flavorName:
+                  type: string
+  patches:
+    - name: openStackCluster
+      description: "Set the cluster depended variables for OpenstackCluster"
+      definitions:
+        - selector:
+            apiVersion: infrastructure.cluster.x-k8s.io/v1alpha5
+            kind: OpenStackClusterTemplate
+            matchResources:
+              infrastructureCluster: true
+          jsonPatches:
+            - op: add
+              path: /spec/template/spec
+              valueFrom:
+                template: |
+                  tags:
+                  - managed-by::cluster-api
+                  - "cluster-name::{{.builtin.cluster.name}}"
+                  identityRef:
+                    kind: Secret
+                    name: "{{ .builtin.cluster.name }}-cloud-config"
+                  dnsNameservers:
+                  - "8.8.8.8"
+                  allowAllInClusterTraffic: true
+                  apiServerLoadBalancer:
+                    enabled: true
+                    additionalPorts:
+                      - 8132
+                      - 8133
+                      - 8134
+                  managedSecurityGroups: false
+                  nodeCidr: 10.6.0.0/24
+                  cloudName: {{ .cluster.cloud }}
+                  externalNetworkId: {{ .cluster.externalNetworkId }}
+                  bastion:
+                    enabled: {{ .cluster.bastionEnabled }}
+                    instance:
+                      flavor: {{ .cluster.bastionFlavor }}
+                      image: {{ .cluster.bastionImage }}
+                      sshKeyName: "{{ .cluster.sshKeyName }}"
+    - name: controlPlane
+      description: "Set the cluster depended variables for the control plane"
+      definitions:
+        - selector:
+            apiVersion: infrastructure.cluster.x-k8s.io/v1alpha5
+            kind: OpenStackMachineTemplate
+            matchResources:
+              controlPlane: true
+          jsonPatches:
+            - op: add
+              path: /spec/template/spec
+              valueFrom:
+                template: |
+                  tags:
+                  - node-group::control-plane
+                  cloudName: {{ .cluster.cloud }}
+                  sshKeyName: "{{ .cluster.sshKeyName }}"
+                  identityRef:
+                    kind: Secret
+                    name: "{{ .builtin.cluster.name }}-cloud-config"
+                  image: "ubuntu-20.04-k8s-{{ .builtin.controlPlane.version }}"
+                  flavor: {{ .controlPlane.flavorName }}
+                  securityGroups:
+                    - name: cp-default
+                  rootVolume:
+                    diskSize: 50
+                    volumeType: {{ .controlPlane.volumeType }}
+    - name: boot-from-volume
+      description: "Set the cluster depended variables for boot-from-volume node groups"
+      definitions:
+        - selector:
+            apiVersion: infrastructure.cluster.x-k8s.io/v1alpha5
+            kind: OpenStackMachineTemplate
+            matchResources:
+              machineDeploymentClass:
+                names:
+                  - boot-from-volume
+          jsonPatches:
+            - op: add
+              path: /spec/template/spec
+              valueFrom:
+                template: |
+                  tags:
+                  - deploy-method::boot-from-volume
+                  - "node-group::{{ .builtin.machineDeployment.topologyName }}"
+                  cloudName: {{ .cluster.cloud }}
+                  sshKeyName: "{{ .cluster.sshKeyName }}"
+                  identityRef:
+                    kind: Secret
+                    name: "{{ .builtin.cluster.name }}-cloud-config"
+                  image: "ubuntu-20.04-k8s-{{ .builtin.machineDeployment.version }}"
+                  flavor: "{{ dig "spec" "flavorName" "dummy" .bootFromVolume }}"
+                  securityGroups:
+                    - name: md-default
+                  rootVolume:
+                    diskSize: {{ dig "spec" "volumeSize" 50 .bootFromVolume }}
+                    volumeType: "{{ dig "spec" "volumeType" "dummy" .bootFromVolume }}"
+    - name: boot-from-image
+      description: "Set the cluster depended variables for boot-from-image node groups"
+      definitions:
+        - selector:
+            apiVersion: infrastructure.cluster.x-k8s.io/v1alpha5
+            kind: OpenStackMachineTemplate
+            matchResources:
+              machineDeploymentClass:
+                names:
+                  - boot-from-image
+          jsonPatches:
+            - op: add
+              path: /spec/template/spec
+              valueFrom:
+                template: |
+                  tags:
+                  - deploy-method::boot-from-image
+                  - "node-group::{{ .builtin.machineDeployment.topologyName }}"
+                  cloudName: {{ .cluster.cloud }}
+                  sshKeyName: "{{ .cluster.sshKeyName }}"
+                  identityRef:
+                    kind: Secret
+                    name: "{{ .builtin.cluster.name }}-cloud-config"
+                  image: "ubuntu-20.04-k8s-{{ .builtin.machineDeployment.version }}"
+                  flavor: "{{ dig "spec" "flavorName" "dummy" .bootFromImage }}"
+                  securityGroups:
+                    - name: md-default
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha5
+kind: OpenStackClusterTemplate
+metadata:
+  name: cc-lab-cluster
+  namespace: cc-test
+spec:
+  template:
+    spec:
+      tags:
+        - dummy
+      dnsNameservers:
+        - "8.8.8.8"
+      apiServerLoadBalancer:
+        enabled: true
+        additionalPorts:
+          - 8132
+      managedSecurityGroups: true
+      nodeCidr: 10.6.0.0/24
+      cloudName: dummy
+      externalNetworkId: dummy
+      identityRef:
+        kind: Secret
+        name: dummy
+      bastion:
+        enabled: true
+        instance:
+          flavor: dummy
+          image: dummy
+          sshKeyName: dummy
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+kind: KubeadmControlPlaneTemplate
+metadata:
+  name: cc-lab-kubeadm-control-plane
+  namespace: cc-test
+spec:
+  template:
+    spec:
+      kubeadmConfigSpec:
+        clusterConfiguration:
+          apiServer:
+            extraArgs:
+              cloud-provider: external
+              egress-selector-config-file: /etc/kubernetes/konnectivity-server/egress-selector-configuration.yaml
+#              http2-max-streams-per-connection: "1000"
+            extraVolumes:
+              - hostPath: /etc/kubernetes/konnectivity-server
+                mountPath: /etc/kubernetes/konnectivity-server
+                name: konnectivity-uds
+                readOnly: false
+              - hostPath: /etc/kubernetes/cloud.conf
+                mountPath: /etc/kubernetes/cloud.conf
+                name: cloud
+                readOnly: true
+          controllerManager:
+            extraArgs:
+              cloud-provider: external
+#              http2-max-streams-per-connection: "1000"
+#              leader-elect-lease-duration: 60s
+#              leader-elect-renew-deadline: 30s
+#              leader-elect-retry-period: 8s
+            extraVolumes:
+              - hostPath: /etc/kubernetes/cloud.conf
+                mountPath: /etc/kubernetes/cloud.conf
+                name: cloud
+                readOnly: true
+              - hostPath: /etc/ssl/certs/cacert
+                mountPath: /etc/certs/cacert
+                name: cacerts
+                readOnly: true
+#          scheduler:
+#            extraArgs:
+#              http2-max-streams-per-connection: "1000"
+#              leader-elect-lease-duration: 60s
+#              leader-elect-renew-deadline: 30s
+#              leader-elect-retry-period: 8s
+#          etcd:
+#            local:
+#              extraArgs:
+#                election-timeout: "3000" # This should be at least 5X the heartbeat-interval
+#                heartbeat-interval: "500"
+          imageRepository: k8s.gcr.io
+        postKubeadmCommands:
+          - openssl req -subj "/CN=system:konnectivity-server" -new -newkey rsa:2048 -nodes -out konnectivity.csr -keyout konnectivity.key -out konnectivity.csr
+          - openssl x509 -req -in konnectivity.csr -CA /etc/kubernetes/pki/ca.crt -CAkey /etc/kubernetes/pki/ca.key -CAcreateserial -out konnectivity.crt -days 375 -sha256
+          - kubectl --kubeconfig /etc/kubernetes/konnectivity-server.conf config set-credentials system:konnectivity-server --client-certificate konnectivity.crt --client-key konnectivity.key --embed-certs=true
+          - kubectl --kubeconfig /etc/kubernetes/konnectivity-server.conf config set-cluster kubernetes --server "$(kubectl --kubeconfig /etc/kubernetes/admin.conf config view -o jsonpath='{.clusters..server}')" --certificate-authority /etc/kubernetes/pki/ca.crt --embed-certs=true
+          - kubectl --kubeconfig /etc/kubernetes/konnectivity-server.conf config set-context system:konnectivity-server@kubernetes --cluster kubernetes --user system:konnectivity-server
+          - kubectl --kubeconfig /etc/kubernetes/konnectivity-server.conf config use-context system:konnectivity-server@kubernetes
+          - rm -f konnectivity.crt konnectivity.key konnectivity.csr
+          - export KUBECONFIG=/etc/kubernetes/admin.conf
+          - kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.24.1/manifests/calico.yaml
+          - kubectl apply -f https://raw.githubusercontent.com/kubernetes/website/main/content/en/examples/admin/konnectivity/konnectivity-rbac.yaml
+          - wget https://raw.githubusercontent.com/kubernetes/website/main/content/en/examples/admin/konnectivity/konnectivity-server.yaml -P /etc/kubernetes/manifests/
+          - wget https://raw.githubusercontent.com/kubernetes/website/main/content/en/examples/admin/konnectivity/konnectivity-agent.yaml -O - | sed "s/35.225.206.7/$(grep -oE "\b([0-9]{1,3}\.){3}[0-9]{1,3}\b" /etc/kubernetes/admin.conf)/" | kubectl apply -f -
+          - chmod 640 /etc/kubernetes/admin.conf
+          - mv /etc/kubernetes/occm.yaml /etc/kubernetes/manifests/
+        files:
+          - content: YXBpVmVyc2lvbjogYXBpc2VydmVyLms4cy5pby92MWJldGExDQpraW5kOiBFZ3Jlc3NTZWxlY3RvckNvbmZpZ3VyYXRpb24NCmVncmVzc1NlbGVjdGlvbnM6DQotIG5hbWU6IGNsdXN0ZXINCiAgY29ubmVjdGlvbjoNCiAgICBwcm94eVByb3RvY29sOiBHUlBDDQogICAgdHJhbnNwb3J0Og0KICAgICAgdWRzOg0KICAgICAgICB1ZHNOYW1lOiAvZXRjL2t1YmVybmV0ZXMva29ubmVjdGl2aXR5LXNlcnZlci9rb25uZWN0aXZpdHktc2VydmVyLnNvY2tldA0K
+            owner: root
+            path: /etc/kubernetes/konnectivity-server/egress-selector-configuration.yaml
+            encoding: base64
+            permissions: "0600"
+          - content: YXBpVmVyc2lvbjogdjENCmtpbmQ6IFBvZA0KbWV0YWRhdGE6DQogIG5hbWU6IG9wZW5zdGFjay1jbG91ZC1jb250cm9sbGVyLW1hbmFnZXINCiAgbmFtZXNwYWNlOiBrdWJlLXN5c3RlbQ0KICBsYWJlbHM6DQogICAgazhzLWFwcDogb3BlbnN0YWNrLWNsb3VkLWNvbnRyb2xsZXItbWFuYWdlcg0Kc3BlYzoNCiAgc2VjdXJpdHlDb250ZXh0Og0KICAgIHJ1bkFzVXNlcjogMTAwMQ0KICBjb250YWluZXJzOg0KICAgIC0gbmFtZTogb3BlbnN0YWNrLWNsb3VkLWNvbnRyb2xsZXItbWFuYWdlcg0KICAgICAgaW1hZ2U6IGRvY2tlci5pby9rOHNjbG91ZHByb3ZpZGVyL29wZW5zdGFjay1jbG91ZC1jb250cm9sbGVyLW1hbmFnZXI6bGF0ZXN0DQogICAgICBhcmdzOg0KICAgICAgICAtIC9iaW4vb3BlbnN0YWNrLWNsb3VkLWNvbnRyb2xsZXItbWFuYWdlcg0KICAgICAgICAtIC0tdj0xDQogICAgICAgIC0gLS1rdWJlY29uZmlnPSQoS1VCRUNPTkZJRykNCiAgICAgICAgLSAtLWNsdXN0ZXItbmFtZT0kKENMVVNURVJfTkFNRSkNCiAgICAgICAgLSAtLWNsb3VkLWNvbmZpZz0kKENMT1VEX0NPTkZJRykNCiAgICAgICAgLSAtLWNsb3VkLXByb3ZpZGVyPW9wZW5zdGFjaw0KICAgICAgICAtIC0tYmluZC1hZGRyZXNzPTEyNy4wLjAuMQ0KICAgICAgdm9sdW1lTW91bnRzOg0KICAgICAgICAtIG1vdW50UGF0aDogL2V0Yy9rdWJlcm5ldGVzL3BraQ0KICAgICAgICAgIG5hbWU6IGs4cy1jZXJ0cw0KICAgICAgICAgIHJlYWRPbmx5OiB0cnVlDQogICAgICAgIC0gbW91bnRQYXRoOiAvZXRjL3NzbC9jZXJ0cw0KICAgICAgICAgIG5hbWU6IGNhLWNlcnRzDQogICAgICAgICAgcmVhZE9ubHk6IHRydWUNCiAgICAgICAgLSBtb3VudFBhdGg6IC9ldGMvY29uZmlnDQogICAgICAgICAgbmFtZTogY29uZmlndXJhdGlvbnMNCiAgICAgICAgICByZWFkT25seTogdHJ1ZQ0KICAgICAgcmVzb3VyY2VzOg0KICAgICAgICByZXF1ZXN0czoNCiAgICAgICAgICBjcHU6IDIwMG0NCiAgICAgIGVudjoNCiAgICAgICAgLSBuYW1lOiBDTE9VRF9DT05GSUcNCiAgICAgICAgICB2YWx1ZTogL2V0Yy9jb25maWcvY2xvdWQuY29uZg0KICAgICAgICAtIG5hbWU6IENMVVNURVJfTkFNRQ0KICAgICAgICAgIHZhbHVlOiBrdWJlcm5ldGVzDQogICAgICAgIC0gbmFtZTogS1VCRUNPTkZJRw0KICAgICAgICAgIHZhbHVlOiAvZXRjL2NvbmZpZy9hZG1pbi5jb25mDQogIGhvc3ROZXR3b3JrOiB0cnVlDQogIHZvbHVtZXM6DQogIC0gbmFtZTogY29uZmlndXJhdGlvbnMNCiAgICBob3N0UGF0aDoNCiAgICAgIHBhdGg6IC9ldGMva3ViZXJuZXRlcw0KICAgICAgdHlwZTogRGlyZWN0b3J5T3JDcmVhdGUNCiAgLSBob3N0UGF0aDoNCiAgICAgIHBhdGg6IC9ldGMva3ViZXJuZXRlcy9wa2kNCiAgICAgIHR5cGU6IERpcmVjdG9yeU9yQ3JlYXRlDQogICAgbmFtZTogazhzLWNlcnRzDQogIC0gaG9zdFBhdGg6DQogICAgICBwYXRoOiAvZXRjL3NzbC9jZXJ0cw0KICAgICAgdHlwZTogRGlyZWN0b3J5T3JDcmVhdGUNCiAgICBuYW1lOiBjYS1jZXJ0cw0K
+            owner: root
+            path: /etc/kubernetes/occm.yaml
+            permissions: "0600"
+            encoding: base64
+          - contentFrom:
+              secret:
+                key: cloud-conf
+                name: capi-kubeadm
+            owner: root
+            path: /etc/kubernetes/cloud.conf
+            permissions: "0644"
+          - contentFrom:
+              secret:
+                key: cacert
+                name: capi-kubeadm
+            owner: root
+            path: /etc/ssl/certs/cacert
+            permissions: "0644"
+        initConfiguration:
+          nodeRegistration:
+            kubeletExtraArgs:
+              cloud-provider: external
+            name: "{{ local_hostname }}"
+        joinConfiguration:
+          nodeRegistration:
+            kubeletExtraArgs:
+              cloud-provider: external
+            name: "{{ local_hostname }}"
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha5
+kind: OpenStackMachineTemplate
+metadata:
+  name: cc-lab-control-plane
+  namespace: cc-test
+spec:
+  template:
+    spec:
+      tags:
+        - dummy
+      cloudName: dummy
+      sshKeyName: dummy
+      image: dummy
+      flavor: dummy
+      rootVolume:
+        diskSize: 50
+        volumeType: dummy
+      identityRef:
+        kind: Secret
+        name: dummy
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+kind: KubeadmConfigTemplate
+metadata:
+  name: cc-lab-boot-from-volume
+  namespace: cc-test
+spec:
+  template:
+    spec:
+      files:
+        - contentFrom:
+            secret:
+              key: cloud-conf
+              name: capi-kubeadm
+          owner: root
+          path: /etc/kubernetes/cloud.conf
+          permissions: "0600"
+        - contentFrom:
+            secret:
+              key: cacert
+              name: capi-kubeadm
+          owner: root
+          path: /etc/ssl/certs/cacert
+          permissions: "0644"
+      joinConfiguration:
+        nodeRegistration:
+          kubeletExtraArgs:
+            cloud-provider: external
+          name: "{{ local_hostname }}"
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha5
+kind: OpenStackMachineTemplate
+metadata:
+  name: cc-lab-boot-from-volume
+  namespace: cc-test
+spec:
+  template:
+    spec:
+      tags:
+        - dummy
+      cloudName: dummy
+      sshKeyName: dummy
+      image: dummy
+      flavor: dummy
+      rootVolume:
+        diskSize: 50
+        volumeType: dummy
+      identityRef:
+        kind: Secret
+        name: dummy
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+kind: KubeadmConfigTemplate
+metadata:
+  name: cc-lab-boot-from-image
+  namespace: cc-test
+spec:
+  template:
+    spec:
+      files:
+        - contentFrom:
+            secret:
+              key: cloud-conf
+              name: capi-kubeadm
+          owner: root
+          path: /etc/kubernetes/cloud.conf
+          permissions: "0600"
+        - contentFrom:
+            secret:
+              key: cacert
+              name: capi-kubeadm
+          owner: root
+          path: /etc/ssl/certs/cacert
+          permissions: "0644"
+      joinConfiguration:
+        nodeRegistration:
+          kubeletExtraArgs:
+            cloud-provider: external
+          name: "{{ local_hostname }}"
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha5
+kind: OpenStackMachineTemplate
+metadata:
+  name: cc-lab-boot-from-image
+  namespace: cc-test
+spec:
+  template:
+    spec:
+      tags:
+        - dummy
+      cloudName: dummy
+      sshKeyName: dummy
+      image: dummy
+      flavor: dummy
+      identityRef:
+        kind: Secret
+        name: dummy

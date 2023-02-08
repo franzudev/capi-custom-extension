@@ -1,0 +1,49 @@
+---
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: Cluster
+metadata:
+  name: cc-lab-cluster
+  namespace: cc-test
+  labels:
+    cloud-provider: openstack
+    cni: calico
+    k8s-version: "1.24.7"
+spec:
+  topology:
+    class: cc-lab
+    version: v1.24.7
+    controlPlane:
+      replicas: 3
+    workers:
+      machineDeployments:
+        - class: boot-from-volume
+          name: md-0
+          replicas: 3
+          failureDomain: nova
+        - class: boot-from-image
+          name: md-1
+          replicas: 2
+          failureDomain: nova
+    variables:
+      - name: cluster
+        value:
+          externalNetworkId: <external-network-id>
+          sshKeyName: <ssh-key>
+          cloud: openstack
+          bastionEnabled: false
+          bastionFlavor: <flavor>
+          bastionImage: centos_8
+      - name: controlPlane
+        value:
+          flavorName: <flavor>
+          volumeType: __DEFAULT__
+      - name: bootFromVolume
+        value:
+          spec:
+            flavorName: <flavor>
+            volumeType: __DEFAULT__
+            volumeSize: 50
+      - name: bootFromImage
+        value:
+          spec:
+            flavorName: <flavor>
