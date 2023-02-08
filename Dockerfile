@@ -49,7 +49,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 
 # Build
 ARG package=.
-ARG ARCH
+#ARG ARCH
 ARG ldflags
 
 
@@ -61,7 +61,7 @@ WORKDIR /workspace/test/extension
 # Do not force rebuild of up-to-date packages (do not use -a) and use the compiler cache folder
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg/mod \
-    CGO_ENABLED=0 GOOS=linux GOARCH=${ARCH} \
+    CGO_ENABLED=0 GOOS=linux \
     go build -trimpath -ldflags "${ldflags} -extldflags '-static'" \
     -o /workspace/extension ${package}
 
