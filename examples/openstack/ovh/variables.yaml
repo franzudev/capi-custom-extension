@@ -1,0 +1,31 @@
+---
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: Cluster
+metadata:
+  name: cc-lab-cluster
+spec:
+  topology:
+    variables:
+    - name: cluster
+      value:
+        bastionEnabled: false
+        bastionFlavor: d2-4
+        bastionImage: centos_8
+        cloud: openstack
+        externalNetworkId: bcf59eb2-9d83-41cc-b4f5-0435ed594833
+        sshKeyName: arutest
+    - name: controlPlane
+      value:
+        flavorName: d2-4
+        volumeSize: 50
+        volumeType: classic 
+    - name: bootFromVolume
+      value:
+        spec:
+          flavorName: d2-4
+          volumeSize: 50
+          volumeType: classic
+    - name: bootFromImage
+      value:
+        spec:
+          flavorName: d2-4

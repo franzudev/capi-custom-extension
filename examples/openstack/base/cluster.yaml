@@ -3,11 +3,8 @@ apiVersion: cluster.x-k8s.io/v1beta1
 kind: Cluster
 metadata:
   name: cc-lab-cluster
-  namespace: cc-test
   labels:
     cloud-provider: openstack
-    cni: calico
-    k8s-version: "1.24.7"
 spec:
   topology:
     class: cc-lab
@@ -37,6 +34,7 @@ spec:
         value:
           flavorName: <flavor>
           volumeType: __DEFAULT__
+          volumeSize: 50
       - name: bootFromVolume
         value:
           spec:

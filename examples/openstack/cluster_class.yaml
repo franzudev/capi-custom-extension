@@ -111,6 +111,8 @@ spec:
               type: string
             volumeType:
               type: string
+            volumeSize:
+              type: integer
     - name: bootFromVolume
       required: false
       schema:
@@ -164,7 +166,6 @@ spec:
                     enabled: true
                     additionalPorts:
                       - 8132
-                      - 8133
                       - 8134
                   managedSecurityGroups: false
                   nodeCidr: 10.6.0.0/24
@@ -201,7 +202,7 @@ spec:
                   securityGroups:
                     - name: cp-default
                   rootVolume:
-                    diskSize: 50
+                    diskSize: {{ .controlPlane.volumeSize }}
                     volumeType: {{ .controlPlane.volumeType }}
     - name: boot-from-volume
       description: "Set the cluster depended variables for boot-from-volume node groups"

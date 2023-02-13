@@ -1,0 +1,31 @@
+---
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: Cluster
+metadata:
+  name: cc-lab-cluster
+spec:
+  topology:
+    variables:
+    - name: cluster
+      value:
+        bastionEnabled: false
+        bastionFlavor: k8s
+        bastionImage: centos_8
+        cloud: openstack
+        externalNetworkId: 3194ac65-9040-4e3f-9f2d-95d704215ee7 
+        sshKeyName: kira02
+    - name: controlPlane
+      value:
+        flavorName: k8s
+        volumeSize: 50
+        volumeType: __DEFAULT__
+    - name: bootFromVolume
+      value:
+        spec:
+          flavorName: k8s
+          volumeSize: 50
+          volumeType: __DEFAULT__
+    - name: bootFromImage
+      value:
+        spec:
+          flavorName: k8s

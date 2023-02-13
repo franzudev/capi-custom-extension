@@ -1,0 +1,8 @@
+---
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: Cluster
+metadata:
+  name: cc-lab-cluster
+spec:
+  topology:
+    version: v1.24.7
