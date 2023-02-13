@@ -197,7 +197,7 @@ spec:
                   identityRef:
                     kind: Secret
                     name: "{{ .builtin.cluster.name }}-cloud-config"
-                  image: "ubuntu-20.04-k8s-{{ .builtin.controlPlane.version }}"
+                  image: "ubuntu-20.04-k8s-{{ .builtin.cluster.topology.version }}"
                   flavor: {{ .controlPlane.flavorName }}
                   securityGroups:
                     - name: cp-default
@@ -227,7 +227,7 @@ spec:
                   identityRef:
                     kind: Secret
                     name: "{{ .builtin.cluster.name }}-cloud-config"
-                  image: "ubuntu-20.04-k8s-{{ .builtin.machineDeployment.version }}"
+                  image: "ubuntu-20.04-k8s-{{ .builtin.cluster.topology.version }}"
                   flavor: "{{ dig "spec" "flavorName" "dummy" .bootFromVolume }}"
                   securityGroups:
                     - name: md-default
@@ -257,7 +257,7 @@ spec:
                   identityRef:
                     kind: Secret
                     name: "{{ .builtin.cluster.name }}-cloud-config"
-                  image: "ubuntu-20.04-k8s-{{ .builtin.machineDeployment.version }}"
+                  image: "ubuntu-20.04-k8s-{{ .builtin.cluster.topology.version }}"
                   flavor: "{{ dig "spec" "flavorName" "dummy" .bootFromImage }}"
                   securityGroups:
                     - name: md-default

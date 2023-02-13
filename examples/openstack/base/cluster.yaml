@@ -8,18 +8,18 @@ metadata:
 spec:
   topology:
     class: cc-lab
-    version: v1.24.7
+    version: v1.23.10
     controlPlane:
-      replicas: 3
+      replicas: 1
     workers:
       machineDeployments:
         - class: boot-from-volume
           name: md-0
-          replicas: 3
+          replicas: 1
           failureDomain: nova
         - class: boot-from-image
           name: md-1
-          replicas: 2
+          replicas: 1
           failureDomain: nova
     variables:
       - name: cluster
