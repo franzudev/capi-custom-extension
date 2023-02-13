@@ -19,6 +19,7 @@ package lifecycle
 
 import (
 	"context"
+	capov1 "sigs.k8s.io/cluster-api-provider-openstack/api/v1alpha6"
 
 	runtimehooksv1 "sigs.k8s.io/cluster-api/exp/runtime/hooks/api/v1alpha1"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -43,6 +44,20 @@ func (h *Handler) DoBeforeClusterUpgrade(ctx context.Context, request *runtimeho
 	log := ctrl.LoggerFrom(ctx)
 	log.Info("BeforeClusterUpgrade is called")
 	response.Status = runtimehooksv1.ResponseStatusSuccess
+	cluster := &capov1.OpenStackCluster{}
+
+	// c is a created client.
+	_ = h.Client.Get(ctx, client.ObjectKey{
+		Namespace: request.Cluster.Namespace,
+		Name:      request.Cluster.Name,
+	}, cluster)
+
+	response.RetryAfterSeconds = 30
+
+	logger := log.WithName("Upgrader")
+
+	logger.Info("Reconcile upgrade")
+
 	return
 }
 
