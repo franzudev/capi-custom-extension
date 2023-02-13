@@ -1,3 +1,7 @@
 .idea
 .tiltbuild
 cluster-api-sample-runtime-extension
+examples/openstack/secret-cloud-config.yaml
+examples/openstack/cloud-conf
+examples/openstack/cacert
+examples/openstack/clouds.yaml
