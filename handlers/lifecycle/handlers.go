@@ -20,6 +20,8 @@ package lifecycle
 import (
 	"context"
 	capov1 "sigs.k8s.io/cluster-api-provider-openstack/api/v1alpha6"
+	capiv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	"strings"
 
 	runtimehooksv1 "sigs.k8s.io/cluster-api/exp/runtime/hooks/api/v1alpha1"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -44,19 +46,36 @@ func (h *Handler) DoBeforeClusterUpgrade(ctx context.Context, request *runtimeho
 	log := ctrl.LoggerFrom(ctx)
 	log.Info("BeforeClusterUpgrade is called")
 	response.Status = runtimehooksv1.ResponseStatusSuccess
-	cluster := &capov1.OpenStackCluster{}
 
-	// c is a created client.
-	_ = h.Client.Get(ctx, client.ObjectKey{
-		Namespace: request.Cluster.Namespace,
-		Name:      request.Cluster.Name,
-	}, cluster)
+	osmList := &capov1.OpenStackMachineList{}
+	_ = h.Client.List(ctx, osmList)
 
-	response.RetryAfterSeconds = 30
+	var inventoryInline string
+	for _, osm := range osmList.Items {
+		log.Info(osm.Name)
+		if isChildOf(ctx, osm, request.Cluster) {
+			for _, addr := range osm.Status.Addresses {
+				//os.Getenv("CIDRID")
+				//if !strings.HasPrefix(addr.Address, "10.6.") {
+				inventoryInline += addr.Address + "\n"
+				//}
+			}
+		}
+	}
+
+	if inventoryInline == "" {
+		response.RetryAfterSeconds = 30
+	}
+	//ansi := &ansible.AnsibleRun{}
+
+	//ansi.Spec.ForProvider.InventoryInline = ""
+	//_= h.Client.Create(ctx, ansi, {
+	//
+	//})
 
 	logger := log.WithName("Upgrader")
 
-	logger.Info("Reconcile upgrade")
+	logger.Info(inventoryInline)
 
 	return
 }
@@ -91,4 +110,18 @@ func (h *Handler) DoBeforeClusterDelete(ctx context.Context, request *runtimehoo
 	log.Info("BeforeClusterDelete is called")
 	response.Status = runtimehooksv1.ResponseStatusSuccess
 	return
+}
+
+func isChildOf(ctx context.Context, osm capov1.OpenStackMachine, cluster capiv1.Cluster) bool {
+	// os.GetEnv("CPID")
+	cpIdentifier := "control-plane"
+	//idx := "deploymentId"
+	log := ctrl.LoggerFrom(ctx)
+	log.Info(cluster.Name)
+
+	if strings.Contains(osm.Name, cpIdentifier) && strings.Contains(osm.Name, cluster.Name) { //&& osm.Labels[idx] == cluster.Labels[idx] {
+		return true
+	}
+
+	return false
 }
