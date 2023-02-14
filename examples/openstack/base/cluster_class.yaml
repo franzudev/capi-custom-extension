@@ -2,20 +2,17 @@ apiVersion: cluster.x-k8s.io/v1beta1
 kind: ClusterClass
 metadata:
   name: cc-lab
-  namespace: cc-test
 spec:
   controlPlane:
     ref:
       apiVersion: controlplane.cluster.x-k8s.io/v1beta1
       kind: KubeadmControlPlaneTemplate
       name: cc-lab-kubeadm-control-plane
-      namespace: cc-test
     machineInfrastructure:
       ref:
         kind: OpenStackMachineTemplate
         apiVersion: infrastructure.cluster.x-k8s.io/v1alpha5
         name: cc-lab-control-plane
-        namespace: cc-test
     machineHealthCheck:
       maxUnhealthy: 33%
       nodeStartupTimeout: 20m
@@ -31,7 +28,6 @@ spec:
       apiVersion: infrastructure.cluster.x-k8s.io/v1alpha5
       kind: OpenStackClusterTemplate
       name: cc-lab-cluster
-      namespace: cc-test
   workers:
     machineDeployments:
       - class: boot-from-volume
@@ -41,13 +37,11 @@ spec:
               apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
               kind: KubeadmConfigTemplate
               name: cc-lab-boot-from-volume
-              namespace: cc-test
           infrastructure:
             ref:
               apiVersion: infrastructure.cluster.x-k8s.io/v1alpha5
               kind: OpenStackMachineTemplate
               name: cc-lab-boot-from-volume
-              namespace: cc-test
         machineHealthCheck:
           unhealthyRange: "[0-2]"
           nodeStartupTimeout: 20m
@@ -65,13 +59,11 @@ spec:
               apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
               kind: KubeadmConfigTemplate
               name: cc-lab-boot-from-image
-              namespace: cc-test
           infrastructure:
             ref:
               apiVersion: infrastructure.cluster.x-k8s.io/v1alpha5
               kind: OpenStackMachineTemplate
               name: cc-lab-boot-from-image
-              namespace: cc-test
         machineHealthCheck:
           unhealthyRange: "[0-2]"
           nodeStartupTimeout: 20m
@@ -266,7 +258,6 @@ apiVersion: infrastructure.cluster.x-k8s.io/v1alpha5
 kind: OpenStackClusterTemplate
 metadata:
   name: cc-lab-cluster
-  namespace: cc-test
 spec:
   template:
     spec:
@@ -296,7 +287,6 @@ apiVersion: controlplane.cluster.x-k8s.io/v1beta1
 kind: KubeadmControlPlaneTemplate
 metadata:
   name: cc-lab-kubeadm-control-plane
-  namespace: cc-test
 spec:
   template:
     spec:
@@ -399,7 +389,6 @@ apiVersion: infrastructure.cluster.x-k8s.io/v1alpha5
 kind: OpenStackMachineTemplate
 metadata:
   name: cc-lab-control-plane
-  namespace: cc-test
 spec:
   template:
     spec:
@@ -420,7 +409,6 @@ apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
 kind: KubeadmConfigTemplate
 metadata:
   name: cc-lab-boot-from-volume
-  namespace: cc-test
 spec:
   template:
     spec:
@@ -449,7 +437,6 @@ apiVersion: infrastructure.cluster.x-k8s.io/v1alpha5
 kind: OpenStackMachineTemplate
 metadata:
   name: cc-lab-boot-from-volume
-  namespace: cc-test
 spec:
   template:
     spec:
@@ -470,7 +457,6 @@ apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
 kind: KubeadmConfigTemplate
 metadata:
   name: cc-lab-boot-from-image
-  namespace: cc-test
 spec:
   template:
     spec:
@@ -499,7 +485,6 @@ apiVersion: infrastructure.cluster.x-k8s.io/v1alpha5
 kind: OpenStackMachineTemplate
 metadata:
   name: cc-lab-boot-from-image
-  namespace: cc-test
 spec:
   template:
     spec:

@@ -1,0 +1,10 @@
+namespace:
+  - kind: ClusterClass
+    path: spec/controlPlane/ref/namespace
+    create: true
+  - kind: ClusterClass
+    path: spec/controlPlane/machineInfrastructure/ref/namespace
+    create: true
+  - kind: ClusterClass
+    path: spec/infrastructure/ref/namespace
+    create: true

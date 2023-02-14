@@ -18,14 +18,18 @@ spec:
       value:
         flavorName: d2-4
         volumeSize: 50
-        volumeType: classic 
-    - name: bootFromVolume
-      value:
-        spec:
-          flavorName: d2-4
-          volumeSize: 50
-          volumeType: classic
+        volumeType: classic
     - name: bootFromImage
       value:
         spec:
           flavorName: d2-4
+    workers:
+      machineDeployments:
+        #      - class: boot-from-volume
+        #        failureDomain: nova
+        #        name: md-0
+        #        replicas: 1
+      - class: boot-from-image
+        failureDomain: nova
+        name: md-1
+        replicas: 1
