@@ -5,3 +5,7 @@ examples/openstack/secret-cloud-config.yaml
 examples/openstack/cloud-conf
 examples/openstack/cacert
 examples/openstack/clouds.yaml
+
+
+# Ignore DevSpace cache and log folder
+.devspace/
