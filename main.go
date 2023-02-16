@@ -18,16 +18,16 @@ package main
 
 import (
 	"flag"
-	v1 "k8s.io/component-base/logs/api/v1"
-	"net/http"
-	"os"
-
 	"github.com/spf13/pflag"
 	"k8s.io/apimachinery/pkg/runtime"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/component-base/logs"
+	v1 "k8s.io/component-base/logs/api/v1"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/pointer"
+	"net/http"
+	"os"
+	capov6 "sigs.k8s.io/cluster-api-provider-openstack/api/v1alpha6"
 	runtimecatalog "sigs.k8s.io/cluster-api/exp/runtime/catalog"
 	runtimehooksv1 "sigs.k8s.io/cluster-api/exp/runtime/hooks/api/v1alpha1"
 	"sigs.k8s.io/cluster-api/exp/runtime/server"
@@ -55,6 +55,7 @@ var (
 
 func init() {
 	_ = infrav1.AddToScheme(scheme)
+	_ = capov6.AddToScheme(scheme)
 
 	// Register the RuntimeHook types into the catalog.
 	_ = runtimehooksv1.AddToCatalog(catalog)
@@ -97,7 +98,7 @@ func main() {
 
 	ctx := ctrl.SetupSignalHandler()
 
-	webhookServer, err := server.NewServer(server.Options{
+	webhookServer, err := server.New(server.Options{
 		Catalog: catalog,
 		Port:    webhookPort,
 		CertDir: webhookCertDir,
@@ -147,7 +148,7 @@ func registerHooks(webhookServer *server.Server) {
 		os.Exit(1)
 	}
 
-	c, err := client.New(restConfig, client.Options{})
+	c, err := client.New(restConfig, client.Options{Scheme: scheme})
 	if err != nil {
 		setupLog.Error(err, "error creating client to the cluster")
 		os.Exit(1)
