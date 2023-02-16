@@ -24,15 +24,17 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	ctrl "sigs.k8s.io/controller-runtime"
 
+	capov6 "sigs.k8s.io/cluster-api-provider-openstack/api/v1alpha6"
+	capiv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	runtimehooksv1 "sigs.k8s.io/cluster-api/exp/runtime/hooks/api/v1alpha1"
-	infrav1 "sigs.k8s.io/cluster-api/test/infrastructure/docker/api/v1beta1"
 )
 
 // NewHandler returns a new topology mutation Handler.
 func NewHandler(scheme *runtime.Scheme) *Handler {
 	return &Handler{
 		decoder: serializer.NewCodecFactory(scheme).UniversalDecoder(
-			infrav1.GroupVersion,
+			capov6.GroupVersion,
+			capiv1.GroupVersion,
 		),
 	}
 }
