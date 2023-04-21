@@ -9,20 +9,20 @@ spec:
     - name: cluster
       value:
         bastionEnabled: false
-        bastionFlavor: d2-4
+        bastionFlavor: d2-8
         bastionImage: centos_8
         cloud: openstack
-        externalNetworkId: bcf59eb2-9d83-41cc-b4f5-0435ed594833
+        externalNetworkId: b2c02fdc-ffdf-40f6-9722-533bd7058c06
         sshKeyName: arutest
     - name: controlPlane
       value:
-        flavorName: d2-4
-        volumeSize: 50
+        flavorName: d2-8
+        volumeSize: 0
         volumeType: classic
     - name: bootFromImage
       value:
         spec:
-          flavorName: d2-4
+          flavorName: d2-8
     workers:
       machineDeployments:
         #      - class: boot-from-volume
