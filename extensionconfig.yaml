@@ -11,9 +11,4 @@ spec:
       name: sample-service
       namespace: default
       port: 443
-  namespaceSelector:
-    matchExpressions:
-    - key: kubernetes.io/metadata.name
-      operator: In
-      values:
-      - default
+  namespaceSelector: {}

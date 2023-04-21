@@ -1,0 +1,10 @@
+---
+- hosts: all
+  become: true
+  tasks:
+    - name: update kubelet config
+      command: sed -i 's/--register-node=false//' /etc/default/kubelet
+    - name: reload config
+      command: systemctl daemon-reload
+    - name: restart kubelet
+      command: systemctl restart kubelet.service

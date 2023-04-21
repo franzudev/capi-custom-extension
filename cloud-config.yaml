@@ -1,0 +1,11 @@
+apiVersion: v1
+data:
+  cacert: Cg==
+  clouds.yaml: #TODO
+kind: Secret
+metadata:
+  labels:
+    clusterctl.cluster.x-k8s.io/move: "true"
+  name: cc-lab-cluster-cloud-config
+  namespace: default
+type: Opaque

@@ -17,7 +17,10 @@ limitations under the License.
 package main
 
 import (
+	"cluster-api-sample-runtime-extension/handlers/lifecycle"
+	"cluster-api-sample-runtime-extension/handlers/topologymutation"
 	"flag"
+	ansible "github.com/crossplane-contrib/provider-ansible/apis/v1alpha1"
 	"github.com/spf13/pflag"
 	"k8s.io/apimachinery/pkg/runtime"
 	cliflag "k8s.io/component-base/cli/flag"
@@ -27,17 +30,13 @@ import (
 	"k8s.io/utils/pointer"
 	"net/http"
 	"os"
-	capov6 "sigs.k8s.io/cluster-api-provider-openstack/api/v1alpha6"
+	capov1 "sigs.k8s.io/cluster-api-provider-openstack/api/v1alpha6"
 	runtimecatalog "sigs.k8s.io/cluster-api/exp/runtime/catalog"
 	runtimehooksv1 "sigs.k8s.io/cluster-api/exp/runtime/hooks/api/v1alpha1"
 	"sigs.k8s.io/cluster-api/exp/runtime/server"
-	infrav1 "sigs.k8s.io/cluster-api/test/infrastructure/docker/api/v1beta1"
 	"sigs.k8s.io/cluster-api/version"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"cluster-api-sample-runtime-extension/handlers/lifecycle"
-	"cluster-api-sample-runtime-extension/handlers/topologymutation"
 )
 
 var (
@@ -54,8 +53,8 @@ var (
 )
 
 func init() {
-	_ = infrav1.AddToScheme(scheme)
-	_ = capov6.AddToScheme(scheme)
+	_ = capov1.AddToScheme(scheme)
+	_ = ansible.SchemeBuilder.AddToScheme(scheme)
 
 	// Register the RuntimeHook types into the catalog.
 	_ = runtimehooksv1.AddToCatalog(catalog)

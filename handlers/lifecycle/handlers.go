@@ -19,10 +19,12 @@ package lifecycle
 
 import (
 	"context"
+	"os"
 	capov1 "sigs.k8s.io/cluster-api-provider-openstack/api/v1alpha6"
 	capiv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"strings"
 
+	ansible "github.com/crossplane-contrib/provider-ansible/apis/v1alpha1"
 	runtimehooksv1 "sigs.k8s.io/cluster-api/exp/runtime/hooks/api/v1alpha1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -46,36 +48,59 @@ func (h *Handler) DoBeforeClusterUpgrade(ctx context.Context, request *runtimeho
 	log := ctrl.LoggerFrom(ctx)
 	log.Info("BeforeClusterUpgrade is called")
 	response.Status = runtimehooksv1.ResponseStatusSuccess
+	response.RetryAfterSeconds = 60
 
-	osmList := &capov1.OpenStackMachineList{}
-	_ = h.Client.List(ctx, osmList)
-
+	osc := &capov1.OpenStackCluster{}
+	err := h.Client.Get(context.Background(), client.ObjectKey{Name: request.Cluster.Name, Namespace: "default"}, osc)
+	if err != nil || osc == nil {
+		log.Error(err, err.Error())
+		return
+	}
 	var inventoryInline string
-	for _, osm := range osmList.Items {
-		log.Info(osm.Name)
-		if isChildOf(ctx, osm, request.Cluster) {
-			for _, addr := range osm.Status.Addresses {
-				//os.Getenv("CIDRID")
-				//if !strings.HasPrefix(addr.Address, "10.6.") {
-				inventoryInline += addr.Address + "\n"
-				//}
-			}
-		}
+	var playbookInline string
+	inventoryInline += osc.Spec.ControlPlaneEndpoint.Host + " ansible_user=ubuntu ansible_ssh_private_key_file=arutest" + "\n"
+
+	//osmList := &capov6.OpenStackMachineList{}
+	//err = lifecycleHandler.Client.List(context.Background(), osmList, client.InNamespace("default"))
+	//if err != nil || len(osmList.Items) == 0 {
+	//	setupLog.Error(err, err.Error())
+	//	return
+	//}
+	//var inventoryInline string
+	//var playbookInline string
+	//for _, osm := range osmList.Items {
+	//	setupLog.Info(osm.Name)
+	//	if isChildOf(context.Background(), osm) {
+	//		for _, addr := range osm.Status.Addresses {
+	//			//os.Getenv("CIDRID")
+	//			//if !strings.HasPrefix(addr.Address, "10.6.") {
+	//			inventoryInline += addr.Address + " ansible_user=ubuntu ansible_ssh_private_key_file=/arutest" + "\n"
+	//			//}
+	//		}
+	//	}
+	//}
+
+	ansi := &ansible.AnsibleRun{}
+	content, err := os.ReadFile("handlers/lifecycle/play.yaml")
+	if err != nil {
+		log.Error(err, err.Error())
+		return
 	}
 
-	if inventoryInline == "" {
-		response.RetryAfterSeconds = 30
+	name := "test-go-ansible"
+	namespace := "default"
+	playbookInline = string(content)
+	ansi.Name = name
+	ansi.Namespace = namespace
+	ansi.Spec.ForProvider.InventoryInline = &inventoryInline
+	ansi.Spec.ForProvider.PlaybookInline = &playbookInline
+
+	err = h.Client.Create(context.Background(), ansi)
+
+	if err != nil {
+		log.Error(err, err.Error())
+		return
 	}
-	//ansi := &ansible.AnsibleRun{}
-
-	//ansi.Spec.ForProvider.InventoryInline = ""
-	//_= h.Client.Create(ctx, ansi, {
-	//
-	//})
-
-	logger := log.WithName("Upgrader")
-
-	logger.Info(inventoryInline)
 
 	return
 }

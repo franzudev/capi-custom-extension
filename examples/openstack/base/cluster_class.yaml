@@ -157,6 +157,7 @@ spec:
                   apiServerLoadBalancer:
                     enabled: true
                     additionalPorts:
+                      - 22
                       - 8132
                       - 8134
                   managedSecurityGroups: false
@@ -349,6 +350,12 @@ spec:
           - wget https://raw.githubusercontent.com/kubernetes/website/main/content/en/examples/admin/konnectivity/konnectivity-agent.yaml -O - | sed "s/35.225.206.7/$(grep -oE "\b([0-9]{1,3}\.){3}[0-9]{1,3}\b" /etc/kubernetes/admin.conf)/" | kubectl apply -f -
           - chmod 640 /etc/kubernetes/admin.conf
           - mv /etc/kubernetes/occm.yaml /etc/kubernetes/manifests/
+          - export CP_DESIRED='1'
+          - export CP_CURRENT="$(kubectl get no -l node-role.kubernetes.io/control-plane --no-headers | wc -l | xargs)"
+          - if [ $CP_DESIRED -eq $CP_CURRENT ]; then kubectl delete nodes -l node-role.kubernetes.io/control-plane; fi
+          - sed -i 's/$/ --register-node=false/' /etc/default/kubelet
+          - systemctl daemon-reload
+          - systemctl restart kubelet.service
         files:
           - content: YXBpVmVyc2lvbjogYXBpc2VydmVyLms4cy5pby92MWJldGExDQpraW5kOiBFZ3Jlc3NTZWxlY3RvckNvbmZpZ3VyYXRpb24NCmVncmVzc1NlbGVjdGlvbnM6DQotIG5hbWU6IGNsdXN0ZXINCiAgY29ubmVjdGlvbjoNCiAgICBwcm94eVByb3RvY29sOiBHUlBDDQogICAgdHJhbnNwb3J0Og0KICAgICAgdWRzOg0KICAgICAgICB1ZHNOYW1lOiAvZXRjL2t1YmVybmV0ZXMva29ubmVjdGl2aXR5LXNlcnZlci9rb25uZWN0aXZpdHktc2VydmVyLnNvY2tldA0K
             owner: root
