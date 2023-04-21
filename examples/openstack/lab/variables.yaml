@@ -17,13 +17,13 @@ spec:
     - name: controlPlane
       value:
         flavorName: k8s
-        volumeSize: 50
+        volumeSize: 0
         volumeType: __DEFAULT__
     - name: bootFromVolume
       value:
         spec:
           flavorName: k8s
-          volumeSize: 50
+          volumeSize: 0
           volumeType: __DEFAULT__
     - name: bootFromImage
       value:

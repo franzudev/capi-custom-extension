@@ -11,31 +11,37 @@ spec:
     version: v1.23.10
     controlPlane:
       replicas: 1
+    workers:
+      machineDeployments:
+        - class: boot-from-volume
+          name: md-0
+          replicas: 1
+          failureDomain: nova
+        - class: boot-from-image
+          name: md-1
+          replicas: 1
+          failureDomain: nova
     variables:
       - name: cluster
         value:
-          bastionEnabled: false
-          bastionFlavor: d2-8
-          bastionImage: centos_8
+          externalNetworkId: <external-network-id>
+          sshKeyName: <ssh-key>
           cloud: openstack
-          externalNetworkId: b2c02fdc-ffdf-40f6-9722-533bd7058c06
-          sshKeyName: arutest
+          bastionEnabled: false
+          bastionFlavor: <flavor>
+          bastionImage: centos_8
       - name: controlPlane
         value:
-          flavorName: d2-8
-          volumeSize: 0
-          volumeType: classic
+          flavorName: <flavor>
+          volumeType: __DEFAULT__
+          volumeSize: 50
+      - name: bootFromVolume
+        value:
+          spec:
+            flavorName: <flavor>
+            volumeType: __DEFAULT__
+            volumeSize: 50
       - name: bootFromImage
         value:
           spec:
-            flavorName: d2-8
-    workers:
-      machineDeployments:
-        #      - class: boot-from-volume
-        #        failureDomain: nova
-        #        name: md-0
-        #        replicas: 1
-        - class: boot-from-image
-          failureDomain: nova
-          name: md-1
-          replicas: 1
+            flavorName: <flavor>

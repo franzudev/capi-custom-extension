@@ -190,7 +190,7 @@ spec:
                   identityRef:
                     kind: Secret
                     name: "{{ .builtin.cluster.name }}-cloud-config"
-                  image: "ubuntu-20.04-k8s-{{ .builtin.cluster.topology.version }}"
+                  image: "ubuntu-2004-kube-cp-{{ .builtin.cluster.topology.version }}"
                   flavor: {{ .controlPlane.flavorName }}
                   securityGroups:
                     - name: cp-default
@@ -220,7 +220,7 @@ spec:
                   identityRef:
                     kind: Secret
                     name: "{{ .builtin.cluster.name }}-cloud-config"
-                  image: "ubuntu-20.04-k8s-{{ .builtin.cluster.topology.version }}"
+                  image: "ubuntu-2004-kube-cp-{{ .builtin.cluster.topology.version }}"
                   flavor: "{{ dig "spec" "flavorName" "dummy" .bootFromVolume }}"
                   securityGroups:
                     - name: md-default
@@ -250,7 +250,7 @@ spec:
                   identityRef:
                     kind: Secret
                     name: "{{ .builtin.cluster.name }}-cloud-config"
-                  image: "ubuntu-20.04-k8s-{{ .builtin.cluster.topology.version }}"
+                  image: "ubuntu-2004-kube-cp-{{ .builtin.cluster.topology.version }}"
                   flavor: "{{ dig "spec" "flavorName" "dummy" .bootFromImage }}"
                   securityGroups:
                     - name: md-default
@@ -334,7 +334,7 @@ spec:
 #              extraArgs:
 #                election-timeout: "3000" # This should be at least 5X the heartbeat-interval
 #                heartbeat-interval: "500"
-          imageRepository: k8s.gcr.io
+          imageRepository: registry.k8s.io
         postKubeadmCommands:
           - openssl req -subj "/CN=system:konnectivity-server" -new -newkey rsa:2048 -nodes -out konnectivity.csr -keyout konnectivity.key -out konnectivity.csr
           - openssl x509 -req -in konnectivity.csr -CA /etc/kubernetes/pki/ca.crt -CAkey /etc/kubernetes/pki/ca.key -CAcreateserial -out konnectivity.crt -days 375 -sha256
