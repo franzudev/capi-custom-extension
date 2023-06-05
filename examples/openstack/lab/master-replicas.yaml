@@ -6,4 +6,4 @@ metadata:
 spec:
   topology:
     controlPlane:
-      replicas: 3
+      replicas: 1

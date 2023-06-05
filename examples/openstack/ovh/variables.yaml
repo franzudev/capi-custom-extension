@@ -19,7 +19,7 @@ spec:
         flavorName: d2-8
         volumeSize: 0
         volumeType: classic
-    - name: bootFromImage
+    - name: alphaNodePool
       value:
         spec:
           flavorName: d2-8

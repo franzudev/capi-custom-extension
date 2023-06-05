@@ -19,13 +19,13 @@ spec:
         flavorName: k8s
         volumeSize: 0
         volumeType: __DEFAULT__
-    - name: bootFromVolume
+    - name: betaNodePool
       value:
         spec:
           flavorName: k8s
           volumeSize: 0
           volumeType: __DEFAULT__
-    - name: bootFromImage
+    - name: alphaNodePool
       value:
         spec:
           flavorName: k8s

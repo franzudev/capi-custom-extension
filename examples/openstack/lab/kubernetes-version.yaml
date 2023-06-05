@@ -5,4 +5,4 @@ metadata:
   name: cc-lab-cluster
 spec:
   topology:
-    version: v1.23.15
+    version: v1.26.1

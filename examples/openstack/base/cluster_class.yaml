@@ -30,18 +30,18 @@ spec:
       name: cc-lab-cluster
   workers:
     machineDeployments:
-      - class: boot-from-volume
+      - class: beta-node-pool
         template:
           bootstrap:
             ref:
               apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
               kind: KubeadmConfigTemplate
-              name: cc-lab-boot-from-volume
+              name: cc-lab-beta-node-pool
           infrastructure:
             ref:
               apiVersion: infrastructure.cluster.x-k8s.io/v1alpha5
               kind: OpenStackMachineTemplate
-              name: cc-lab-boot-from-volume
+              name: cc-lab-beta-node-pool
         machineHealthCheck:
           unhealthyRange: "[0-2]"
           nodeStartupTimeout: 20m
@@ -52,18 +52,18 @@ spec:
             - type: Ready
               status: "False"
               timeout: 600s
-      - class: boot-from-image
+      - class: alpha-node-pool
         template:
           bootstrap:
             ref:
               apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
               kind: KubeadmConfigTemplate
-              name: cc-lab-boot-from-image
+              name: cc-lab-alpha-node-pool
           infrastructure:
             ref:
               apiVersion: infrastructure.cluster.x-k8s.io/v1alpha5
               kind: OpenStackMachineTemplate
-              name: cc-lab-boot-from-image
+              name: cc-lab-alpha-node-pool
         machineHealthCheck:
           unhealthyRange: "[0-2]"
           nodeStartupTimeout: 20m
@@ -105,7 +105,7 @@ spec:
               type: string
             volumeSize:
               type: integer
-    - name: bootFromVolume
+    - name: betaNodePool
       required: false
       schema:
         openAPIV3Schema:
@@ -120,7 +120,7 @@ spec:
                   type: string
                 volumeSize:
                   type: integer
-    - name: bootFromImage
+    - name: alphaNodePool
       required: false
       schema:
         openAPIV3Schema:
@@ -197,8 +197,8 @@ spec:
                   rootVolume:
                     diskSize: {{ .controlPlane.volumeSize }}
                     volumeType: {{ .controlPlane.volumeType }}
-    - name: boot-from-volume
-      description: "Set the cluster depended variables for boot-from-volume node groups"
+    - name: beta-node-pool
+      description: "Set the cluster depended variables for beta-node-pool node groups"
       definitions:
         - selector:
             apiVersion: infrastructure.cluster.x-k8s.io/v1alpha5
@@ -206,14 +206,14 @@ spec:
             matchResources:
               machineDeploymentClass:
                 names:
-                  - boot-from-volume
+                  - beta-node-pool
           jsonPatches:
             - op: add
               path: /spec/template/spec
               valueFrom:
                 template: |
                   tags:
-                  - deploy-method::boot-from-volume
+                  - deploy-method::beta-node-pool
                   - "node-group::{{ .builtin.machineDeployment.topologyName }}"
                   cloudName: {{ .cluster.cloud }}
                   sshKeyName: "{{ .cluster.sshKeyName }}"
@@ -221,14 +221,14 @@ spec:
                     kind: Secret
                     name: "{{ .builtin.cluster.name }}-cloud-config"
                   image: "ubuntu-2004-kube-cp-{{ .builtin.cluster.topology.version }}"
-                  flavor: "{{ dig "spec" "flavorName" "dummy" .bootFromVolume }}"
+                  flavor: "{{ dig "spec" "flavorName" "dummy" .betaNodePool }}"
                   securityGroups:
                     - name: md-default
                   rootVolume:
-                    diskSize: {{ dig "spec" "volumeSize" 50 .bootFromVolume }}
-                    volumeType: "{{ dig "spec" "volumeType" "dummy" .bootFromVolume }}"
-    - name: boot-from-image
-      description: "Set the cluster depended variables for boot-from-image node groups"
+                    diskSize: {{ dig "spec" "volumeSize" 50 .betaNodePool }}
+                    volumeType: "{{ dig "spec" "volumeType" "dummy" .betaNodePool }}"
+    - name: alpha-node-pool
+      description: "Set the cluster depended variables for alpha-node-pool node groups"
       definitions:
         - selector:
             apiVersion: infrastructure.cluster.x-k8s.io/v1alpha5
@@ -236,14 +236,14 @@ spec:
             matchResources:
               machineDeploymentClass:
                 names:
-                  - boot-from-image
+                  - alpha-node-pool
           jsonPatches:
             - op: add
               path: /spec/template/spec
               valueFrom:
                 template: |
                   tags:
-                  - deploy-method::boot-from-image
+                  - deploy-method::alpha-node-pool
                   - "node-group::{{ .builtin.machineDeployment.topologyName }}"
                   cloudName: {{ .cluster.cloud }}
                   sshKeyName: "{{ .cluster.sshKeyName }}"
@@ -251,7 +251,7 @@ spec:
                     kind: Secret
                     name: "{{ .builtin.cluster.name }}-cloud-config"
                   image: "ubuntu-2004-kube-cp-{{ .builtin.cluster.topology.version }}"
-                  flavor: "{{ dig "spec" "flavorName" "dummy" .bootFromImage }}"
+                  flavor: "{{ dig "spec" "flavorName" "dummy" .alphaNodePool }}"
                   securityGroups:
                     - name: md-default
 ---
@@ -323,17 +323,6 @@ spec:
                 mountPath: /etc/certs/cacert
                 name: cacerts
                 readOnly: true
-#          scheduler:
-#            extraArgs:
-#              http2-max-streams-per-connection: "1000"
-#              leader-elect-lease-duration: 60s
-#              leader-elect-renew-deadline: 30s
-#              leader-elect-retry-period: 8s
-#          etcd:
-#            local:
-#              extraArgs:
-#                election-timeout: "3000" # This should be at least 5X the heartbeat-interval
-#                heartbeat-interval: "500"
           imageRepository: registry.k8s.io
         postKubeadmCommands:
           - openssl req -subj "/CN=system:konnectivity-server" -new -newkey rsa:2048 -nodes -out konnectivity.csr -keyout konnectivity.key -out konnectivity.csr
@@ -415,7 +404,7 @@ spec:
 apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
 kind: KubeadmConfigTemplate
 metadata:
-  name: cc-lab-boot-from-volume
+  name: cc-lab-beta-node-pool
 spec:
   template:
     spec:
@@ -443,7 +432,7 @@ spec:
 apiVersion: infrastructure.cluster.x-k8s.io/v1alpha5
 kind: OpenStackMachineTemplate
 metadata:
-  name: cc-lab-boot-from-volume
+  name: cc-lab-beta-node-pool
 spec:
   template:
     spec:
@@ -463,7 +452,7 @@ spec:
 apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
 kind: KubeadmConfigTemplate
 metadata:
-  name: cc-lab-boot-from-image
+  name: cc-lab-alpha-node-pool
 spec:
   template:
     spec:
@@ -491,7 +480,7 @@ spec:
 apiVersion: infrastructure.cluster.x-k8s.io/v1alpha5
 kind: OpenStackMachineTemplate
 metadata:
-  name: cc-lab-boot-from-image
+  name: cc-lab-alpha-node-pool
 spec:
   template:
     spec:

@@ -8,16 +8,16 @@ metadata:
 spec:
   topology:
     class: cc-lab
-    version: v1.23.10
+    version: v1.26.4
     controlPlane:
       replicas: 1
     workers:
       machineDeployments:
-        - class: boot-from-volume
+        - class: alpha-node-pool
           name: md-0
           replicas: 1
           failureDomain: nova
-        - class: boot-from-image
+        - class: beta-node-pool
           name: md-1
           replicas: 1
           failureDomain: nova
@@ -35,13 +35,13 @@ spec:
           flavorName: <flavor>
           volumeType: __DEFAULT__
           volumeSize: 50
-      - name: bootFromVolume
+      - name: betaNodePool
         value:
           spec:
             flavorName: <flavor>
             volumeType: __DEFAULT__
             volumeSize: 50
-      - name: bootFromImage
+      - name: alphaNodePool
         value:
           spec:
             flavorName: <flavor>
