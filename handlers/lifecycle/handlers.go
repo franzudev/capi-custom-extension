@@ -19,12 +19,14 @@ package lifecycle
 
 import (
 	"context"
-	"os"
-	capov1 "sigs.k8s.io/cluster-api-provider-openstack/api/v1alpha6"
-	capiv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	"strconv"
 	"strings"
+	"time"
 
-	ansible "github.com/crossplane-contrib/provider-ansible/apis/v1alpha1"
+	capov1 "sigs.k8s.io/cluster-api-provider-openstack/api/v1alpha6"
+
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	runtimehooksv1 "sigs.k8s.io/cluster-api/exp/runtime/hooks/api/v1alpha1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -56,9 +58,9 @@ func (h *Handler) DoBeforeClusterUpgrade(ctx context.Context, request *runtimeho
 		log.Error(err, err.Error())
 		return
 	}
-	var inventoryInline string
-	var playbookInline string
-	inventoryInline += osc.Spec.ControlPlaneEndpoint.Host + " ansible_user=ubuntu ansible_ssh_private_key_file=arutest" + "\n"
+	//var inventoryInline string
+	//var playbookInline string
+	//inventoryInline += osc.Spec.ControlPlaneEndpoint.Host + " ansible_user=ubuntu ansible_ssh_private_key_file=arutest" + "\n"
 
 	//osmList := &capov6.OpenStackMachineList{}
 	//err = lifecycleHandler.Client.List(context.Background(), osmList, client.InNamespace("default"))
@@ -80,7 +82,7 @@ func (h *Handler) DoBeforeClusterUpgrade(ctx context.Context, request *runtimeho
 	//	}
 	//}
 
-	ansi := &ansible.AnsibleRun{}
+	/*ansi := &ansible.AnsibleRun{}
 	content, err := os.ReadFile("handlers/lifecycle/play.yaml")
 	if err != nil {
 		log.Error(err, err.Error())
@@ -94,8 +96,45 @@ func (h *Handler) DoBeforeClusterUpgrade(ctx context.Context, request *runtimeho
 	ansi.Namespace = namespace
 	ansi.Spec.ForProvider.InventoryInline = &inventoryInline
 	ansi.Spec.ForProvider.PlaybookInline = &playbookInline
+	*/
+	setupLog := ctrl.Log.WithName("setup")
 
-	err = h.Client.Create(context.Background(), ansi)
+	osmList := &capov1.OpenStackMachineList{}
+	err = h.Client.List(context.Background(), osmList, client.InNamespace("default"))
+	if err != nil || len(osmList.Items) == 0 {
+		setupLog.Error(err, err.Error())
+		return
+	}
+	var nodesIp string
+	for _, osm := range osmList.Items {
+		setupLog.Info(osm.Name)
+		if isChildOf(context.Background(), osm, request.Cluster.Name) {
+			for _, addr := range osm.Status.Addresses {
+				//os.Getenv("CIDRID")
+				//	if !strings.HasPrefix(addr.Address, "10.6.") {
+				nodesIp += addr.Address + " "
+				//	}
+			}
+		}
+	}
+
+	// Using a unstructured object.
+	u := &unstructured.Unstructured{}
+	u.Object = map[string]interface{}{
+		"metadata": map[string]interface{}{
+			"name": request.Cluster.Name + strconv.FormatInt(time.Now().Unix(), 16),
+		},
+		"spec": map[string]interface{}{
+			"nodes_ip": strings.Fields(nodesIp),
+		},
+	}
+	u.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "cluster.aruba.it",
+		Kind:    "ClusterUpgrade",
+		Version: "v1alpha1",
+	})
+
+	err = h.Client.Create(context.Background(), u)
 
 	if err != nil {
 		log.Error(err, err.Error())
@@ -137,14 +176,14 @@ func (h *Handler) DoBeforeClusterDelete(ctx context.Context, request *runtimehoo
 	return
 }
 
-func isChildOf(ctx context.Context, osm capov1.OpenStackMachine, cluster capiv1.Cluster) bool {
+func isChildOf(ctx context.Context, osm capov1.OpenStackMachine, clusterName string) bool {
 	// os.GetEnv("CPID")
 	cpIdentifier := "control-plane"
 	//idx := "deploymentId"
 	log := ctrl.LoggerFrom(ctx)
-	log.Info(cluster.Name)
+	log.Info(clusterName)
 
-	if strings.Contains(osm.Name, cpIdentifier) && strings.Contains(osm.Name, cluster.Name) { //&& osm.Labels[idx] == cluster.Labels[idx] {
+	if strings.Contains(osm.Name, cpIdentifier) && strings.Contains(osm.Name, clusterName) { //&& osm.Labels[idx] == cluster.Labels[idx] {
 		return true
 	}
 
