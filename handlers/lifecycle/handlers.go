@@ -50,7 +50,7 @@ func (h *Handler) DoBeforeClusterUpgrade(ctx context.Context, request *runtimeho
 	log := ctrl.LoggerFrom(ctx)
 	log.Info("BeforeClusterUpgrade is called")
 	response.Status = runtimehooksv1.ResponseStatusSuccess
-	response.RetryAfterSeconds = 60
+	//response.RetryAfterSeconds = 60
 
 	//osc := &capov1.OpenStackCluster{}
 	//err := h.Client.Get(context.Background(), client.ObjectKey{Name: request.Cluster.Name, Namespace: "default"}, osc)
@@ -122,7 +122,8 @@ func (h *Handler) DoBeforeClusterUpgrade(ctx context.Context, request *runtimeho
 	u := &unstructured.Unstructured{}
 	u.Object = map[string]interface{}{
 		"metadata": map[string]interface{}{
-			"name": request.Cluster.Name + strconv.FormatInt(time.Now().Unix(), 16),
+			"name":      request.Cluster.Name + strconv.FormatInt(time.Now().Unix(), 16),
+			"namespace": "default",
 		},
 		"spec": map[string]interface{}{
 			"nodes_ip": strings.Fields(nodesIp),
