@@ -52,12 +52,12 @@ func (h *Handler) DoBeforeClusterUpgrade(ctx context.Context, request *runtimeho
 	response.Status = runtimehooksv1.ResponseStatusSuccess
 	response.RetryAfterSeconds = 60
 
-	osc := &capov1.OpenStackCluster{}
-	err := h.Client.Get(context.Background(), client.ObjectKey{Name: request.Cluster.Name, Namespace: "default"}, osc)
-	if err != nil || osc == nil {
-		log.Error(err, err.Error())
-		return
-	}
+	//osc := &capov1.OpenStackCluster{}
+	//err := h.Client.Get(context.Background(), client.ObjectKey{Name: request.Cluster.Name, Namespace: "default"}, osc)
+	//if err != nil || osc == nil {
+	//	log.Error(err, err.Error())
+	//	return
+	//}
 	//var inventoryInline string
 	//var playbookInline string
 	//inventoryInline += osc.Spec.ControlPlaneEndpoint.Host + " ansible_user=ubuntu ansible_ssh_private_key_file=arutest" + "\n"
@@ -100,7 +100,7 @@ func (h *Handler) DoBeforeClusterUpgrade(ctx context.Context, request *runtimeho
 	setupLog := ctrl.Log.WithName("setup")
 
 	osmList := &capov1.OpenStackMachineList{}
-	err = h.Client.List(context.Background(), osmList, client.InNamespace("default"))
+	err := h.Client.List(context.Background(), osmList, client.InNamespace("default"))
 	if err != nil || len(osmList.Items) == 0 {
 		setupLog.Error(err, err.Error())
 		return
