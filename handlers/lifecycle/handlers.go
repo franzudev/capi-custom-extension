@@ -50,7 +50,6 @@ func (h *Handler) DoBeforeClusterUpgrade(ctx context.Context, request *runtimeho
 	log := ctrl.LoggerFrom(ctx)
 	log.Info("BeforeClusterUpgrade is called")
 	response.Status = runtimehooksv1.ResponseStatusSuccess
-	response.RetryAfterSeconds = 60
 
 	//osc := &capov1.OpenStackCluster{}
 	//err := h.Client.Get(context.Background(), client.ObjectKey{Name: request.Cluster.Name, Namespace: "default"}, osc)
@@ -111,9 +110,9 @@ func (h *Handler) DoBeforeClusterUpgrade(ctx context.Context, request *runtimeho
 		if isChildOf(context.Background(), osm, request.Cluster.Name) {
 			for _, addr := range osm.Status.Addresses {
 				//os.Getenv("CIDRID")
-				//	if !strings.HasPrefix(addr.Address, "10.6.") {
-				nodesIp += addr.Address + " "
-				//	}
+				if !strings.HasPrefix(addr.Address, "10.6.") {
+					nodesIp += addr.Address + " "
+				}
 			}
 		}
 	}
@@ -127,6 +126,7 @@ func (h *Handler) DoBeforeClusterUpgrade(ctx context.Context, request *runtimeho
 		},
 		"spec": map[string]interface{}{
 			"nodes_ip": strings.Fields(nodesIp),
+			"upgraded": false,
 		},
 	}
 	u.SetGroupVersionKind(schema.GroupVersionKind{
@@ -139,6 +139,7 @@ func (h *Handler) DoBeforeClusterUpgrade(ctx context.Context, request *runtimeho
 
 	if err != nil {
 		log.Error(err, err.Error())
+		response.RetryAfterSeconds = 60
 		return
 	}
 
