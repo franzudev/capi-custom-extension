@@ -19,9 +19,7 @@ package lifecycle
 
 import (
 	"context"
-	"strconv"
 	"strings"
-	"time"
 
 	capov1 "sigs.k8s.io/cluster-api-provider-openstack/api/v1alpha6"
 
@@ -50,53 +48,6 @@ func (h *Handler) DoBeforeClusterUpgrade(ctx context.Context, request *runtimeho
 	log := ctrl.LoggerFrom(ctx)
 	log.Info("BeforeClusterUpgrade is called")
 	response.Status = runtimehooksv1.ResponseStatusSuccess
-	response.RetryAfterSeconds = 60
-
-	//osc := &capov1.OpenStackCluster{}
-	//err := h.Client.Get(context.Background(), client.ObjectKey{Name: request.Cluster.Name, Namespace: "default"}, osc)
-	//if err != nil || osc == nil {
-	//	log.Error(err, err.Error())
-	//	return
-	//}
-	//var inventoryInline string
-	//var playbookInline string
-	//inventoryInline += osc.Spec.ControlPlaneEndpoint.Host + " ansible_user=ubuntu ansible_ssh_private_key_file=arutest" + "\n"
-
-	//osmList := &capov6.OpenStackMachineList{}
-	//err = lifecycleHandler.Client.List(context.Background(), osmList, client.InNamespace("default"))
-	//if err != nil || len(osmList.Items) == 0 {
-	//	setupLog.Error(err, err.Error())
-	//	return
-	//}
-	//var inventoryInline string
-	//var playbookInline string
-	//for _, osm := range osmList.Items {
-	//	setupLog.Info(osm.Name)
-	//	if isChildOf(context.Background(), osm) {
-	//		for _, addr := range osm.Status.Addresses {
-	//			//os.Getenv("CIDRID")
-	//			//if !strings.HasPrefix(addr.Address, "10.6.") {
-	//			inventoryInline += addr.Address + " ansible_user=ubuntu ansible_ssh_private_key_file=/arutest" + "\n"
-	//			//}
-	//		}
-	//	}
-	//}
-
-	/*ansi := &ansible.AnsibleRun{}
-	content, err := os.ReadFile("handlers/lifecycle/play.yaml")
-	if err != nil {
-		log.Error(err, err.Error())
-		return
-	}
-
-	name := "test-go-ansible"
-	namespace := "default"
-	playbookInline = string(content)
-	ansi.Name = name
-	ansi.Namespace = namespace
-	ansi.Spec.ForProvider.InventoryInline = &inventoryInline
-	ansi.Spec.ForProvider.PlaybookInline = &playbookInline
-	*/
 	setupLog := ctrl.Log.WithName("setup")
 
 	osmList := &capov1.OpenStackMachineList{}
@@ -105,28 +56,17 @@ func (h *Handler) DoBeforeClusterUpgrade(ctx context.Context, request *runtimeho
 		setupLog.Error(err, err.Error())
 		return
 	}
-	var nodesIp string
-	for _, osm := range osmList.Items {
-		setupLog.Info(osm.Name)
-		if isChildOf(context.Background(), osm, request.Cluster.Name) {
-			for _, addr := range osm.Status.Addresses {
-				//os.Getenv("CIDRID")
-				//	if !strings.HasPrefix(addr.Address, "10.6.") {
-				nodesIp += addr.Address + " "
-				//	}
-			}
-		}
-	}
+	var nodesIp []string = extractNodesIp(osmList, request.Cluster.Name)
 
 	// Using a unstructured object.
 	u := &unstructured.Unstructured{}
 	u.Object = map[string]interface{}{
 		"metadata": map[string]interface{}{
-			"name":      request.Cluster.Name + strconv.FormatInt(time.Now().Unix(), 16),
+			"name":      request.Cluster.Name, //+ strconv.FormatInt(time.Now().Unix(), 16),
 			"namespace": request.Cluster.Namespace,
 		},
 		"spec": map[string]interface{}{
-			"nodes_ip": strings.Fields(nodesIp),
+			"nodes_ip": nodesIp,
 		},
 	}
 	u.SetGroupVersionKind(schema.GroupVersionKind{
@@ -142,6 +82,8 @@ func (h *Handler) DoBeforeClusterUpgrade(ctx context.Context, request *runtimeho
 		return
 	}
 
+	//TODO: add logic to manage retry
+	//response.RetryAfterSeconds = 60
 	return
 }
 
@@ -175,6 +117,21 @@ func (h *Handler) DoBeforeClusterDelete(ctx context.Context, request *runtimehoo
 	log.Info("BeforeClusterDelete is called")
 	response.Status = runtimehooksv1.ResponseStatusSuccess
 	return
+}
+
+func extractNodesIp(machineList *capov1.OpenStackMachineList, clusterName string) []string {
+	var nodesIp string
+	for _, osm := range machineList.Items {
+		if isChildOf(context.Background(), osm, clusterName) {
+			for _, addr := range osm.Status.Addresses {
+				//os.Getenv("CIDRID")
+				//	if !strings.HasPrefix(addr.Address, "10.6.") {
+				nodesIp += addr.Address + " "
+				//	}
+			}
+		}
+	}
+	return strings.Fields(nodesIp)
 }
 
 func isChildOf(ctx context.Context, osm capov1.OpenStackMachine, clusterName string) bool {
