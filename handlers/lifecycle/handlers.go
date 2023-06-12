@@ -67,6 +67,7 @@ func (h *Handler) DoBeforeClusterUpgrade(ctx context.Context, request *runtimeho
 		},
 		"spec": map[string]interface{}{
 			"nodes_ip": nodesIp,
+			"upgraded": false,
 		},
 	}
 	u.SetGroupVersionKind(schema.GroupVersionKind{
@@ -79,6 +80,7 @@ func (h *Handler) DoBeforeClusterUpgrade(ctx context.Context, request *runtimeho
 
 	if err != nil {
 		log.Error(err, err.Error())
+		response.RetryAfterSeconds = 60
 		return
 	}
 
@@ -125,9 +127,9 @@ func extractNodesIp(machineList *capov1.OpenStackMachineList, clusterName string
 		if isChildOf(context.Background(), osm, clusterName) {
 			for _, addr := range osm.Status.Addresses {
 				//os.Getenv("CIDRID")
-				//	if !strings.HasPrefix(addr.Address, "10.6.") {
-				nodesIp += addr.Address + " "
-				//	}
+				if !strings.HasPrefix(addr.Address, "10.6.") {
+					nodesIp += addr.Address + " "
+				}
 			}
 		}
 	}
