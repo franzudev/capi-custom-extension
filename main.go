@@ -20,16 +20,20 @@ import (
 	"cluster-api-sample-runtime-extension/handlers/lifecycle"
 	"cluster-api-sample-runtime-extension/handlers/topologymutation"
 	"flag"
+	"log"
+	"net/http"
+	"os"
+
 	ansible "github.com/crossplane-contrib/provider-ansible/apis/v1alpha1"
 	"github.com/spf13/pflag"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/rest"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/component-base/logs"
 	v1 "k8s.io/component-base/logs/api/v1"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/pointer"
-	"net/http"
-	"os"
 	capov1 "sigs.k8s.io/cluster-api-provider-openstack/api/v1alpha6"
 	runtimecatalog "sigs.k8s.io/cluster-api/exp/runtime/catalog"
 	runtimehooksv1 "sigs.k8s.io/cluster-api/exp/runtime/hooks/api/v1alpha1"
@@ -147,12 +151,20 @@ func registerHooks(webhookServer *server.Server) {
 		os.Exit(1)
 	}
 
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		log.Fatalf("Failed to load in-cluster config: %v", err)
+	}
+
+	// Create a dynamic client using the configuration
+	dynamicClient, err := dynamic.NewForConfig(config)
+
 	c, err := client.New(restConfig, client.Options{Scheme: scheme})
 	if err != nil {
 		setupLog.Error(err, "error creating client to the cluster")
 		os.Exit(1)
 	}
-	lifecycleHandler := lifecycle.Handler{Client: c}
+	lifecycleHandler := lifecycle.Handler{Client: c, DynamicClient: dynamicClient}
 
 	// Lifecycle Hooks
 	if err := webhookServer.AddExtensionHandler(server.ExtensionHandler{

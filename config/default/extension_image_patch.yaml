@@ -6,5 +6,5 @@ spec:
   template:
     spec:
       containers:
-      - image: franzu/controller
+      - image: fedecerruto/controller
         name: extension
