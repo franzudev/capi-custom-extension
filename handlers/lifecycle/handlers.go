@@ -58,7 +58,7 @@ func (h *Handler) DoBeforeClusterUpgrade(ctx context.Context, request *runtimeho
 
 	setupLog := ctrl.Log.WithName("setup")
 	//check if a ClusterUpgrade resource already exists for the specific cluster and upgrade (formVersion -> toVersion)
-	clusterpgrade, error := h.getClusterUpgrade(context.Background(), h.DynamicClient, request.Cluster.Name, request.Cluster.Namespace, request.FromKubernetesVersion, request.ToKubernetesVersion)
+	clusterpgrade, error := h.getClusterUpgrade(context.Background(), h.DynamicClient, request.Cluster.Name, request.Cluster.Namespace, request.ToKubernetesVersion)
 	if error != nil {
 		setupLog.Error(error, error.Error())
 		response.Status = runtimehooksv1.ResponseStatusFailure
@@ -89,7 +89,7 @@ func (h *Handler) DoBeforeClusterUpgrade(ctx context.Context, request *runtimeho
 	u := &unstructured.Unstructured{}
 	u.Object = map[string]interface{}{
 		"metadata": map[string]interface{}{
-			"name":      request.Cluster.Name + "-" + request.FromKubernetesVersion + "-" + request.ToKubernetesVersion,
+			"name":      request.Cluster.Name + "-" + request.ToKubernetesVersion,
 			"namespace": request.Cluster.Namespace,
 		},
 		"spec": map[string]interface{}{
@@ -107,10 +107,11 @@ func (h *Handler) DoBeforeClusterUpgrade(ctx context.Context, request *runtimeho
 
 	if err != nil {
 		log.Error(err, err.Error())
-
+		//TODO manage error
 		return
 	}
 	response.Status = runtimehooksv1.ResponseStatusSuccess
+	response.RetryAfterSeconds = 30
 	return
 }
 
@@ -152,6 +153,35 @@ func (h *Handler) DoAfterControlPlaneUpgrade(ctx context.Context, request *runti
 func (h *Handler) DoAfterClusterUpgrade(ctx context.Context, request *runtimehooksv1.AfterClusterUpgradeRequest, response *runtimehooksv1.AfterClusterUpgradeResponse) {
 	log := ctrl.LoggerFrom(ctx)
 	log.Info("AfterClusterUpgrade is called")
+	setupLog := ctrl.Log.WithName("setup")
+	//check if a ClusterUpgrade resource already exists for the specific cluster and upgrade (formVersion -> toVersion)
+	clusterpgrade, error := h.getClusterUpgrade(context.Background(), h.DynamicClient, request.Cluster.Name, request.Cluster.Namespace, request.KubernetesVersion)
+	if error != nil {
+		setupLog.Error(error, error.Error())
+		response.Status = runtimehooksv1.ResponseStatusFailure
+		response.Message = "Error retrieving ClusterUpgrade list"
+		return
+	}
+	if len(clusterpgrade) == 0 {
+		log.Info("There are no ClusterUpgrade resource for cluster " + request.Cluster.Name + "and version: " + request.KubernetesVersion)
+		response.Status = runtimehooksv1.ResponseStatusFailure
+		response.Message = "There are no ClusterUpgrade resource for cluster " + request.Cluster.Name + "and version: " + request.KubernetesVersion
+		return
+	}
+
+	patchData := []byte(`{"spec": {"upgraded": "true"}}`)
+	gvr := schema.GroupVersionResource{
+		Group:    clusterUpgradeGroup,
+		Version:  clusterUpgradeVersion,
+		Resource: "clusterupgrades",
+	}
+	_, err := h.DynamicClient.Resource(gvr).Namespace(clusterpgrade[0].GetNamespace()).Patch(context.Background(), clusterpgrade[0].GetName(), "application/merge-patch+json", patchData, v1.PatchOptions{})
+	if err != nil {
+		setupLog.Error(error, "failed to patch resource: %v")
+		response.Status = runtimehooksv1.ResponseStatusFailure
+		return
+	}
+
 	response.Status = runtimehooksv1.ResponseStatusSuccess
 	return
 }
@@ -179,7 +209,7 @@ func extractControPlaneNodesIp(machineList *capov1.OpenStackMachineList, cluster
 	return strings.Fields(nodesIp)
 }
 
-func (h *Handler) getClusterUpgrade(ctx context.Context, client dynamic.Interface, clusterName string, namespace string, fromk8sVersion string, tok8sVersion string) ([]unstructured.Unstructured, error) {
+func (h *Handler) getClusterUpgrade(ctx context.Context, client dynamic.Interface, clusterName string, namespace string, tok8sVersion string) ([]unstructured.Unstructured, error) {
 	log := ctrl.LoggerFrom(ctx)
 	log.Info("Cluster name=" + clusterName + ", namespace=" + namespace)
 	gvr := schema.GroupVersionResource{
@@ -187,7 +217,7 @@ func (h *Handler) getClusterUpgrade(ctx context.Context, client dynamic.Interfac
 		Version:  clusterUpgradeVersion,
 		Resource: "clusterupgrades",
 	}
-	list, err := client.Resource(gvr).Namespace(namespace).List(ctx, v1.ListOptions{FieldSelector: "metadata.name=" + clusterName + "-" + fromk8sVersion + "-" + tok8sVersion})
+	list, err := client.Resource(gvr).Namespace(namespace).List(ctx, v1.ListOptions{FieldSelector: "metadata.name=" + clusterName + "-" + tok8sVersion})
 	if err != nil {
 		return nil, err
 	}
